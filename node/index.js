@@ -1,49 +1,44 @@
-var express = require('express')
-var app = express()
+var express = require('express');
 var cheerio = require('cheerio');
-var request = require('request');
+var axios = require('axios');
 
-var url = 'https://www.myinstants.com/search/?name=trapezio'; 
+var app = express();
 
-var timeoutInMilliseconds = 10*1000
-var opts = {
-	url: url,
-	timeout: timeoutInMilliseconds
-}
+app.get('/search', async function (req, res) {
+    var searchTerm = req.query.name || 'trapezio';
+    var url = 'https://www.myinstants.com/search/?name=' + encodeURIComponent(searchTerm);
 
-app.get('/', function (req, res) {
+    try {
+        const response = await axios.get(url);
+        var $ = cheerio.load(response.data);
 
-	res.header("Content-Type", "application/json; charset=utf-8");
-	var response = res;
+        var responseArray = [];
 
-	request(opts, function (err, res, body) {
+        $('.instant').each(function (i, elem) {
+            var buttonName = $(this).find('.instant-link').text().trim() || 'Unbekannt';
+            var smallButton = $(this).find('.small-button');
 
-		if (err) {
-			console.dir(err)
-			return
-		}
+            if (smallButton.length && smallButton.attr('onclick')) {
+                var onclickAttr = smallButton.attr('onclick');
+                var buttonUrl = onclickAttr.split("('")[1].split("')")[0];
+                var fullButtonUrl = 'https://www.myinstants.com' + buttonUrl;
 
-		var statusCode = res.statusCode;
-		var rawHtml = body;
-		$ = cheerio.load(body)
+                var item = {
+                    name: buttonName,
+                    url: fullButtonUrl
+                };
 
-		var respondeArray = [];
+                responseArray.push(item);
+            }
+        });
 
-		$('.instant').each(function(i, elem) {
-			
-			var title =  $(this).text();
-			var link = $(this).children('.small-button').attr('onclick');
-			var item = {
-				title : title,
-				link : link
-			};
+        res.json(responseArray);
+    } catch (error) {
+        console.error(error);
+        res.status(500).send({ error: 'Fehler beim Abrufen der Daten' });
+    }
+});
 
-		 	respondeArray[i] = item;
-		});
-
-		response.send( JSON.stringify(respondeArray) );
-	});
-
-})
-
-app.listen(3000)
+app.listen(3000, function () {
+    console.log('Server runs on: http://localhost:3000');
+});
