@@ -15,7 +15,7 @@ def search(searchTerm):
         smallButton = link.find("button", class_="small-button")
         if smallButton and 'onclick' in smallButton.attrs:
             s = smallButton['onclick']
-            buttonUrl = s.partition("('")[-1].rpartition("')")[0]
+            buttonUrl = s.partition("('")[-1].rpartition(".mp3'")[0] + ".mp3"
             button = {
                 "name": buttonName,
                 "url": buttonUrl
